@@ -92,11 +92,12 @@ function bdh_mbc_ready_scripts_styles($data = array())
 // Make API call(s) to MemberPress, and return / append to structured data
 function bdh_mbc_mp_api_call()
 {
-	$bdhmbc_mp_api_key = "EDJcep31GN";
+	$bdhmbc_mp_api_key = "rmo2UyLCaP";
 	$mp_api_header = "MEMBERPRESS-API-KEY: $bdhmbc_mp_api_key";
 
 	$page = strval(1);
 	$per_page = strval(10);
+
 	$target_url = "http://mbcsandbox.com/wp-json/mp/v1/members?page=$page&per_page=$per_page";
 
 	// Initialize API call (cURL)
@@ -105,8 +106,14 @@ function bdh_mbc_mp_api_call()
 	// Set header to include API key
 	curl_setopt($ch, CURLOPT_HEADER, $mp_api_header);
 
-	// Set 
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+
+	// Set return data
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+	curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "GET");
+
+	$header = array();
+	$header[] = $mp_api_header;
+	$header[] = 'Content-Type: application/json';
 
 	$ret_val = curl_exec($ch);
 
@@ -135,7 +142,7 @@ function bdh_mbc_jurisdiction_html()
 	$jurisdictions_html = <<<EOD
 							
 							<div class="et_pb_row et_pb_row_4 et_pb_equal_columns">
-								<div class="et_pb_column et_pb_column_1_3 et_pb_column_7  et_pb_css_mix_blend_mode_passthrough">
+								<div class="et_pb_column et_pb_column_1_3 et_pb_css_mix_blend_mode_passthrough" style="margin:0px; padding: 0px;">
 									<div class="et_pb_module et_pb_text et_pb_text_7  et_pb_text_align_left et_pb_bg_layout_light">
 										<div class="et_pb_text_inner">
 											<p>
@@ -159,7 +166,7 @@ function bdh_mbc_jurisdiction_html()
 												</div>
 											</div>
 										</div>
-										<div class="et_pb_column et_pb_column_1_3 et_pb_column_9  et_pb_css_mix_blend_mode_passthrough et-last-child">
+										<div class="et_pb_column et_pb_column_1_3 et_pb_css_mix_blend_mode_passthrough et-last-child" style="margin:0px; padding: 0px;">
 											<div class="et_pb_module et_pb_text et_pb_text_9  et_pb_text_align_left et_pb_bg_layout_light">
 												<div class="et_pb_text_inner">
 													<p>
@@ -206,125 +213,113 @@ function bdh_mbc_mediator_directory_shortcode_fn()
 
 	$html_ret = <<<EOD
 					$debug_data
-					<div id="et-boc" class="et-boc">  
-							<div class="et-l et-l--post">
-								<div class="et_builder_inner_content et_pb_gutters3">
-									<div class="et_pb_section et_pb_section_0 et_section_regular">
-										<div class="et_pb_row et_pb_row_0">
-											<div class="et_pb_column et_pb_column_4_4 et_pb_column_0  et_pb_css_mix_blend_mode_passthrough et-last-child">
-												<div class="et_pb_module et_pb_text et_pb_text_0  et_pb_text_align_left et_pb_bg_layout_light">
-													<div class="et_pb_text_inner">
-														<h1>Mediator search</h1>
-														<p>Select relevant options, and type in the search bar, to filter mediators and show a curated list below.</p>
-													</div>
-												</div>
-											</div>
-										</div>
-										<div class="et_pb_row et_pb_row_1">
-											<div class="et_pb_column et_pb_column_1_3 et_pb_column_1  et_pb_css_mix_blend_mode_passthrough">
-												<div class="et_pb_module et_pb_text et_pb_text_1  et_pb_text_align_left et_pb_bg_layout_light">
-													<div class="et_pb_text_inner"><h5>Roster membership</h5>
-														<p>
-															<input type="checkbox" id="familyMediator" name="familyMediator" value="familyMediator">Family Mediator<br>
-															<input type="checkbox" id="civilMediator" name="civilMediator" value="civilMediator">Civil Mediator<br>
-															<input type="checkbox" id="elderMediator" name="elderMediator" value="elderMediator">Elder Mediator<br><input type="checkbox" id="excludeAssociate" name="excludeAssociate" value="exclude Associate">Exclude associate mediators
-														</p>
-													</div>
-												</div>
-											</div>
-											<div class="et_pb_column et_pb_column_2_3 et_pb_column_2  et_pb_css_mix_blend_mode_passthrough et-last-child">
-												<div class="et_pb_module et_pb_text et_pb_text_2  et_pb_text_align_left et_pb_bg_layout_light">
-													<div class="et_pb_text_inner">
-														<h5>Filter mediator list based on text</h5>
-													</div>
-													</div>
-													<div class="et_pb_module et_pb_search et_pb_search_0  et_pb_text_align_left et_pb_bg_layout_light">
-													<div>
-														<label class="screen-reader-text" for="s">Search</label>
-														<input type="text" name="s" placeholder="Enter text here to search mediators" class="et_pb_s">
-													</div>
-												</div>
-											</div>
-										</div>
-										<div class="et_pb_row et_pb_row_2">
-											<div class="et_pb_column et_pb_column_1_3 et_pb_column_3  et_pb_css_mix_blend_mode_passthrough">
-												<div class="et_pb_module et_pb_text et_pb_text_3  et_pb_text_align_left et_pb_bg_layout_light">
-													<div class="et_pb_text_inner">
-														<p>
-															<input type="checkbox" id="willingToTravel" name="willingToTravel" value="willingToTravel">Willing to travel (additional fees may apply)<br>
-															<input type="checkbox" id="legalAidTarriff" name="legalAidTarriff" value="legalAidTarriff">Legal aid tariff applies (family mediation only)<br>
-															<input type="checkbox" id="feeReductionPossible" name="feeReductionPossible" value="feeReductionPossible">  Fee reduction possible (contact mediator for conditions)
-														</p>
-													</div>
-												</div>
-											</div>
-											<div class="et_pb_column et_pb_column_1_3 et_pb_column_4  et_pb_css_mix_blend_mode_passthrough">
-												<div class="et_pb_module et_pb_text et_pb_text_4  et_pb_text_align_left et_pb_bg_layout_light">
-													<div class="et_pb_text_inner">
-														<p>Professional background checkboxes/dropdown (criteria TBD)</p>
-													</div>
-												</div>
-											</div>
-											<div class="et_pb_column et_pb_column_1_3 et_pb_column_5  et_pb_css_mix_blend_mode_passthrough et-last-child">
-												<div class="et_pb_module et_pb_text et_pb_text_5  et_pb_text_align_left et_pb_bg_layout_light">
-													<div class="et_pb_text_inner">
-														<p>“tags” criteria TBD (eg. online mediator)</p>
-													</div>
-												</div>
-											</div>
-										</div>
-										<div class="et_pb_row et_pb_row_3">
-											<div class="et_pb_column et_pb_column_4_4 et_pb_column_6  et_pb_css_mix_blend_mode_passthrough et-last-child">
-												<div class="et_pb_module et_pb_text et_pb_text_6  et_pb_text_align_left et_pb_bg_layout_light">
-													<div class="et_pb_text_inner">
-														<h5>Regions served</h5>
-														<p>Leaving all boxes unchecked, will list mediators for all regions.</p>
-													</div>
-												</div>
-											</div>  
-										</div>
-										$jurisdictions_html
-										<div class="et_pb_section et_pb_section_1 et_section_regular et_pb_section_sticky">
-											<div class="et_pb_row et_pb_row_5">
-												<div class="et_pb_column et_pb_column_4_4 et_pb_column_10  et_pb_css_mix_blend_mode_passthrough et-last-child">
-													<div class="et_pb_module et_pb_text et_pb_text_10  et_pb_text_align_left et_pb_bg_layout_light">
-														<div class="et_pb_text_inner">
-															<h2>Mediators</h2>
-														</div>
-													</div>
-												</div>
-											</div>
-											<div class="et_pb_row et_pb_row_6 et_clickable">
-												<div class="et_pb_column et_pb_column_1_5 et_pb_column_11  et_pb_css_mix_blend_mode_passthrough">
-													<div class="et_pb_module et_pb_image et_pb_image_0 et_pb_image_sticky">
-														<span class="et_pb_image_wrap ">
-															<img src="http://mbcsandbox.com/wp-content/uploads/2022/07/portrait-12.jpg" alt="" title="portrait-12" srcset="https://mbcsandbox.com/wp-content/uploads/2022/07/portrait-12.jpg 400w, https://mbcsandbox.com/wp-content/uploads/2022/07/portrait-12-200x300.jpg 200w" sizes="(max-width: 400px) 100vw, 400px" class="wp-image-211240" width="400" height="600">
-														</span>
-													</div>
-												</div>
-												<div class="et_pb_column et_pb_column_3_5 et_pb_column_12  et_pb_css_mix_blend_mode_passthrough">
-													<div class="et_pb_module et_pb_text et_pb_text_11 et_clickable  et_pb_text_align_left et_pb_bg_layout_light">
-														<div class="et_pb_text_inner">
-															<p>
-																<strong>Mediator Name</strong>
-																<span class="mbctag mbctag1"></span><span class="mbctag mbctag3"></span>
-															</p>
-															<p>Mediator intro blurb.</p>
-														</div>
-													</div>
-												</div>
-												<div class="et_pb_column et_pb_column_1_5 et_pb_column_13  et_pb_css_mix_blend_mode_passthrough et-last-child et_pb_column_empty">
-												</div>
-											</div>
-										</div>
+					<div class="et_pb_column et_pb_column_4_4 et_pb_column_0  et_pb_css_mix_blend_mode_passthrough et-last-child">
+						<div class="et_pb_module et_pb_text et_pb_text_0  et_pb_text_align_left et_pb_bg_layout_light">
+							<div class="et_pb_text_inner">
+								<h1>Mediator search</h1>
+								<p>Select relevant options, and type in the search bar, to filter mediators and show a curated list below.</p>
+							</div>
+						</div>
+						<div class="et_pb_row et_pb_row_1">
+							<div class="et_pb_column et_pb_column_1_3 et_pb_column_1  et_pb_css_mix_blend_mode_passthrough">
+								<div class="et_pb_module et_pb_text et_pb_text_1  et_pb_text_align_left et_pb_bg_layout_light">
+									<div class="et_pb_text_inner"><h5>Roster membership</h5>
+										<p>
+											<input type="checkbox" id="familyMediator" name="familyMediator" value="familyMediator">Family Mediator<br>
+											<input type="checkbox" id="civilMediator" name="civilMediator" value="civilMediator">Civil Mediator<br>
+											<input type="checkbox" id="elderMediator" name="elderMediator" value="elderMediator">Elder Mediator<br><input type="checkbox" id="excludeAssociate" name="excludeAssociate" value="exclude Associate">Exclude associate mediators
+										</p>
+									</div>
+								</div>
+							</div>
+							<div class="et_pb_column et_pb_column_2_3 et_pb_column_2  et_pb_css_mix_blend_mode_passthrough et-last-child">
+								<div class="et_pb_module et_pb_text et_pb_text_2  et_pb_text_align_left et_pb_bg_layout_light">
+									<div class="et_pb_text_inner">
+										<h5>Filter mediator list based on text</h5>
+									</div>
+									</div>
+									<div class="et_pb_module et_pb_search et_pb_search_0  et_pb_text_align_left et_pb_bg_layout_light">
+									<div>
+										<label class="screen-reader-text" for="s">Search</label>
+										<input type="text" name="s" placeholder="Enter text here to search mediators" class="et_pb_s">
 									</div>
 								</div>
 							</div>
 						</div>
+						<div class="et_pb_row et_pb_row_2">
+							<div class="et_pb_column et_pb_column_1_3 et_pb_column_3  et_pb_css_mix_blend_mode_passthrough">
+								<div class="et_pb_module et_pb_text et_pb_text_3  et_pb_text_align_left et_pb_bg_layout_light">
+									<div class="et_pb_text_inner">
+										<p>
+											<input type="checkbox" id="willingToTravel" name="willingToTravel" value="willingToTravel">Willing to travel (additional fees may apply)<br>
+											<input type="checkbox" id="legalAidTarriff" name="legalAidTarriff" value="legalAidTarriff">Legal aid tariff applies (family mediation only)<br>
+											<input type="checkbox" id="feeReductionPossible" name="feeReductionPossible" value="feeReductionPossible">  Fee reduction possible (contact mediator for conditions)
+										</p>
+									</div>
+								</div>
+							</div>
+							<div class="et_pb_column et_pb_column_1_3 et_pb_column_4  et_pb_css_mix_blend_mode_passthrough">
+								<div class="et_pb_module et_pb_text et_pb_text_4  et_pb_text_align_left et_pb_bg_layout_light">
+									<div class="et_pb_text_inner">
+										<p>Professional background checkboxes/dropdown (criteria TBD)</p>
+									</div>
+								</div>
+							</div>
+							<div class="et_pb_column et_pb_column_1_3 et_pb_column_5  et_pb_css_mix_blend_mode_passthrough et-last-child">
+								<div class="et_pb_module et_pb_text et_pb_text_5  et_pb_text_align_left et_pb_bg_layout_light">
+									<div class="et_pb_text_inner">
+										<p>“tags” criteria TBD (eg. online mediator)</p>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="et_pb_row et_pb_row_3">
+							<div class="et_pb_column et_pb_column_4_4 et_pb_column_6  et_pb_css_mix_blend_mode_passthrough et-last-child">
+								<div class="et_pb_module et_pb_text et_pb_text_6  et_pb_text_align_left et_pb_bg_layout_light">
+									<div class="et_pb_text_inner">
+										<h5>Regions served</h5>
+										<p>Leaving all boxes unchecked, will list mediators for all regions.</p>
+									</div>
+								</div>
+							</div>  
+						</div>
+						$jurisdictions_html
+						<div class="et_pb_section et_pb_section_1 et_section_regular et_pb_section_sticky">
+							<div class="et_pb_row et_pb_row_5">
+								<div class="et_pb_column et_pb_column_4_4 et_pb_column_10  et_pb_css_mix_blend_mode_passthrough et-last-child">
+									<div class="et_pb_module et_pb_text et_pb_text_10  et_pb_text_align_left et_pb_bg_layout_light">
+										<div class="et_pb_text_inner">
+											<h2>Mediators</h2>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div class="et_pb_row et_pb_row_6 et_clickable">
+								<div class="et_pb_column et_pb_column_1_5 et_pb_column_11  et_pb_css_mix_blend_mode_passthrough">
+									<div class="et_pb_module et_pb_image et_pb_image_0 et_pb_image_sticky">
+										<span class="et_pb_image_wrap ">
+											<img src="http://mbcsandbox.com/wp-content/uploads/2022/07/portrait-12.jpg" alt="" title="portrait-12" srcset="https://mbcsandbox.com/wp-content/uploads/2022/07/portrait-12.jpg 400w, https://mbcsandbox.com/wp-content/uploads/2022/07/portrait-12-200x300.jpg 200w" sizes="(max-width: 400px) 100vw, 400px" class="wp-image-211240" width="400" height="600">
+										</span>
+									</div>
+								</div>
+								<div class="et_pb_column et_pb_column_3_5 et_pb_column_12  et_pb_css_mix_blend_mode_passthrough">
+									<div class="et_pb_module et_pb_text et_pb_text_11 et_clickable  et_pb_text_align_left et_pb_bg_layout_light">
+										<div class="et_pb_text_inner">
+											<p>
+												<strong>Mediator Name</strong>
+												<span class="mbctag mbctag1"></span><span class="mbctag mbctag3"></span>
+											</p>
+											<p>Mediator intro blurb.</p>
+										</div>
+									</div>
+								</div>
+								<div class="et_pb_column et_pb_column_1_5 et_pb_column_13  et_pb_css_mix_blend_mode_passthrough et-last-child et_pb_column_empty">
+								</div>
+							</div>
+						</div>
 					</div>
-					?>
 EOD;
 
-return "$html_ret";
+	return "$html_ret";
 }
 add_shortcode('MBC_Roster_Directory', 'bdh_mbc_mediator_directory_shortcode_fn');
