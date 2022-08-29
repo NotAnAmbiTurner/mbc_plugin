@@ -89,39 +89,6 @@ function bdh_mbc_ready_scripts_styles($data = array())
 	wp_enqueue_style('bdh_mbc_css', plugin_dir_url(__FILE__) . 'public/css/bdh-mbc-mediator-directory-list-css.css', array(), null, 'all');
 }
 
-// Make API call(s) to MemberPress, and return / append to structured data
-// function bdh_mbc_mp_api_call()
-// {
-// 	$bdhmbc_mp_api_key = "rmo2UyLCaP";
-// 	$mp_api_header = "MEMBERPRESS-API-KEY: $bdhmbc_mp_api_key";
-
-// 	$page = strval(1);
-// 	$per_page = strval(10);
-
-// 	$target_url = "http://mbcsandbox.com/wp-json/mp/v1/members?page=$page&per_page=$per_page";
-
-// 	// Initialize API call (cURL)
-// 	$ch = curl_init($target_url);
-
-// 	// Set header to include API key
-// 	curl_setopt($ch, CURLOPT_HEADER, $mp_api_header);
-
-
-// 	// Set return data
-// 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-// 	curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "GET");
-
-// 	$header = array();
-// 	$header[] = $mp_api_header;
-// 	$header[] = 'Content-Type: application/json';
-
-// 	$ret_val = curl_exec($ch);
-
-// 	curl_close($ch);
-
-// 	return $ret_val;
-// }
-
 // Get and return wordpress table prefix
 function wp_table_prefix()
 {
