@@ -14,7 +14,7 @@
  *
  * @wordpress-plugin
  * Plugin Name:       BDH Mediate BC Roster Directory Plugin
- * Description:       A plugin for creating a shortcode [MBC_Roster_Directory] to show a mediator directory.
+ * Description:       A plugin for creating a shortcode [MBC_Roster_Directory] to show a mediator directory. Please note this plugin relies on "Tag:_TEXT_ANYTHING" (underscores are spaces, so, Tag:<space>TEXT<space>ANYTEXT to list TEXT as tags for the mediators in the mediator directory.
  * Version:           1.0.0
  * Author:            Brandon Hastings
  * Author URI:        www.bhastings.com
@@ -90,43 +90,231 @@ function bdh_mbc_ready_scripts_styles($data = array())
 }
 
 // Make API call(s) to MemberPress, and return / append to structured data
-function bdh_mbc_mp_api_call()
+// function bdh_mbc_mp_api_call()
+// {
+// 	$bdhmbc_mp_api_key = "rmo2UyLCaP";
+// 	$mp_api_header = "MEMBERPRESS-API-KEY: $bdhmbc_mp_api_key";
+
+// 	$page = strval(1);
+// 	$per_page = strval(10);
+
+// 	$target_url = "http://mbcsandbox.com/wp-json/mp/v1/members?page=$page&per_page=$per_page";
+
+// 	// Initialize API call (cURL)
+// 	$ch = curl_init($target_url);
+
+// 	// Set header to include API key
+// 	curl_setopt($ch, CURLOPT_HEADER, $mp_api_header);
+
+
+// 	// Set return data
+// 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+// 	curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "GET");
+
+// 	$header = array();
+// 	$header[] = $mp_api_header;
+// 	$header[] = 'Content-Type: application/json';
+
+// 	$ret_val = curl_exec($ch);
+
+// 	curl_close($ch);
+
+// 	return $ret_val;
+// }
+
+// Get and return wordpress table prefix
+function wp_table_prefix()
 {
-	$bdhmbc_mp_api_key = "rmo2UyLCaP";
-	$mp_api_header = "MEMBERPRESS-API-KEY: $bdhmbc_mp_api_key";
+	global $wpdb;
+	$table_prefix = $wpdb->prefix;
+	return $table_prefix;
+}
 
-	$page = strval(1);
-	$per_page = strval(10);
+// Generate list of MemberPress members with active subscriptions
+function get_active_mp_members()
+{
+	// Run SQL Query
+	global $wpdb;
+	$table_prefix = wp_table_prefix();
+	$query_str = "SELECT user_id, memberships FROM {$table_prefix}mepr_members WHERE active_txn_count > 0";
+	$query_prepared = $wpdb->prepare($query_str);
+	$query_data = $wpdb->get_results($query_prepared);
 
-	$target_url = "http://mbcsandbox.com/wp-json/mp/v1/members?page=$page&per_page=$per_page";
+	return $query_data;
+}
 
-	// Initialize API call (cURL)
-	$ch = curl_init($target_url);
+function mp_get_membership_table_data($ID_arr)
+{
+	// Convert $ID_arr to string
+	$ID_arr = implode(",", $ID_arr);
 
-	// Set header to include API key
-	curl_setopt($ch, CURLOPT_HEADER, $mp_api_header);
+	// Run SQL Query
+	global $wpdb;
+	$table_prefix = wp_table_prefix();
+	$query_str = "SELECT ID, post_title FROM {$table_prefix}posts WHERE ID IN($ID_arr)";
+	$query_prepared = $wpdb->prepare($query_str);
+	$query_data = $wpdb->get_results($query_prepared);
+
+	return $query_data;
+}
+
+function mp_get_usermeta_table_data($user_id_list)
+{
+	$table_prefix = wp_table_prefix();
+
+	$ID_arr_str = implode(", ", $user_id_list);
+
+	// List fields wanted from {prefix}usermeta (called 'meta_key' in DB)
+	$meta_filters_arr = array(
+		"first_name",
+		"last_name",
+		"description",
+		"mepr_regions_serviced", // wpmi_options.mepr_options contains properly capitalized region names
+	);
+	$meta_filters_w_prefix = array();
+	foreach ($meta_filters_arr as $val) {
+		$val2 =  '"' . $val . '"';
+		array_push($meta_filters_w_prefix, $val2);
+	}
+	$meta_filters_arr_str = implode(", ", $meta_filters_w_prefix);
+	// echo $meta_filters_arr_str;
+
+	$meta_keys_select_arr = array(
+		"user_id",
+		"meta_key",
+		"meta_value",
+		"mper_phone",
+		"mepr_year_began_mediating",
+
+	);
+
+	$table_select_fields_arr_w_prefix = array();
+	foreach ($meta_keys_select_arr as $val) {
+		$val2 =  "`" . $table_prefix . "usermeta`.`" . $val . "`";
+		array_push($table_select_fields_arr_w_prefix, $val2);
+	}
+	$table_select_fields_str = implode(", ", $table_select_fields_arr_w_prefix);
+
+	// Set up SQL query
+	global $wpdb;
+
+	// {prefix}usermeta table query
+	$query_str = "SELECT $table_select_fields_str FROM `{$table_prefix}usermeta` WHERE `wpmi_usermeta`.`user_id` IN($ID_arr_str) and `wpmi_usermeta`.`meta_key` IN($meta_filters_arr_str)";
+
+	echo $query_str;
+
+	$query_prepared = $wpdb->prepare($query_str);
+	$query_data = $wpdb->get_results($query_prepared);
+
+	return $query_data;
+}
+
+function mp_get_users_table_data($user_id_list)
+{
+	$table_prefix = wp_table_prefix();
+
+	// NEED FOR THIS:
+	// - address
+	// - url slug
+	// - options (fee waiver, willing to travel, fee reduction)
+	// - Tags
+	// - Long description
+	// - Short description
+	// - Photo URL
+
+	// Appears to work as a start
+	// SELECT wpmi_usermeta.user_id, wpmi_usermeta.meta_key, wpmi_usermeta.meta_value, wpmi_users.user_nicename, wpmi_users.user_email FROM wpmi_users INNER JOIN wpmi_usermeta ON wpmi_users.ID = wpmi_usermeta.user_id WHERE wpmi_users.ID IN(22); 
 
 
-	// Set return data
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-	curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "GET");
+	// Create array of IDs for queries
+	$ID_arr_str = implode(",", $user_id_list);
 
-	$header = array();
-	$header[] = $mp_api_header;
-	$header[] = 'Content-Type: application/json';
+	// List fields wanted from {prefix}users table
+	$user_keys_arr = array(
+		"user_nicename",
+		"user_email",
+		"display_name",
+		"user_url"
+	);
 
-	$ret_val = curl_exec($ch);
+	// Add table names and prefixes to fields wanted, and add to array for SELECT in SQL query
 
-	curl_close($ch);
+	$table_select_fields_arr_w_prefix = array();
 
-	return $ret_val;
+	foreach ($user_keys_arr as $val) {
+		$val2 =  "`" . $table_prefix . "users`.`" . $val . "`";
+		array_push($table_select_fields_arr_w_prefix, $val2);
+	}
+
+	$table_select_fields_str = implode(", ", $table_select_fields_arr_w_prefix);
+
+	// Set up SQL query
+	global $wpdb;
+
+	// {prefix}usermeta table query
+	$query_str = "SELECT $table_select_fields_str FROM `{$table_prefix}users` WHERE `wpmi_users`.`ID` IN($ID_arr_str)";
+
+	$query_prepared = $wpdb->prepare($query_str);
+	$query_data = $wpdb->get_results($query_prepared);
+
+
+
+
+	return $query_data;
+}
+
+function mp_memberships_and_user_ids()
+{
+
+	// Get list of active user ids and their associated (active) membership ids.
+	$users_arr = get_active_mp_members();
+
+	// Create list of (1) active user IDs, and (2) active membership ids, with duplicates.
+	$membership_id_list = array();
+	$user_id_list = array();
+	foreach ($users_arr as $user) {
+		$membership_id_list = array_merge($membership_id_list, explode(',', $user->memberships));
+		$user_id_list = array_merge($user_id_list, explode(',', $user->user_id));
+	}
+
+	// Remove duplicates, so $membership_id_list contains only unique values
+	$membership_id_list = array_unique($membership_id_list);
+	$user_id_list = array_unique($user_id_list);
+
+	// Convert the values in $membership_id_list to int
+	$membership_id_list = array_map('intVal', $membership_id_list);
+	$user_id_list = array_map('intVal', $user_id_list);
+
+	// Get table data for active memberships
+	$membership_table_data = mp_get_membership_table_data($membership_id_list);
+	$users_table_data = mp_get_users_table_data($user_id_list);
+	$usermeta_table_data = mp_get_usermeta_table_data($user_id_list);
+
+	// Create membership data structure
+	$membership_structured_data = structure_membership_table_data($membership_table_data);
+
+	// Get table data for active members
+	// $member_table_data = get_member_table_data($users_arr);
+
+	return array($users_arr, $membership_table_data);
+}
+
+
+
+function structure_membership_table_data($data)
+{
+	return false;
 }
 
 // Generate HTML for jurisdictions checkboxes
-function bdh_mbc_jurisdiction_html()
+function bdh_mbc_jurisdiction_html($member_data)
 {
 
-	// Initialize jurisdictions
+	// Initialize jurisdictions; get one user and collect jurisdictions
+
+
+
+
 	$jurisdictions = array('Alberni–Clayoquot', 'Bulkley–Nechako', 'Capital', 'Cariboo', 'Central Coast', 'Central Kootenay', 'Central Okanagan', 'Columbia-Shuswap', 'Comox Valley', 'Cowichan Valley', 'East Kootenay', 'Fraser Valley', 'Fraser–Fort George', 'Kitimat–Stikine', 'Kootenay Boundary', 'Metro Vancouver', 'Mount Waddington', 'Nanaimo', 'North Coast', 'North Okanagan', 'Northern Rockies', 'Okanagan–Similkameen', 'Peace River', 'qathet', 'Squamish–Lillooet', 'Stikine Region', 'Strathcona', 'Sunshine Coast', 'Thompson–Nicola');
 
 	// Just in case want to add others to end of array, will still be in alpha order
@@ -201,18 +389,36 @@ function bdh_mbc_mediators_html($data = array())
 	return bdh_mbc_mp_api_call();
 }
 
+function prettyPrintPHPArr($array)
+{
+	return '<pre>' . print_r($array, true) . '</pre>';
+}
+
+function create_user_data_arr()
+{
+	return mp_memberships_and_user_ids();
+}
+
 // Add Shortcode
 function bdh_mbc_mediator_directory_shortcode_fn()
 {
 
+	// Initialize scripts and css for the appropriate page
 	bdh_mbc_ready_scripts_styles();
 
-	$jurisdictions_html = bdh_mbc_jurisdiction_html();
+	// Generate an associative array, containing relevant user and member data
+	$member_data = create_user_data_arr();
 
-	$debug_data = bdh_mbc_mediators_html();
+	$debug_data1 = prettyPrintPHPArr($member_data[0]);
+	$debug_data2 = prettyPrintPHPArr($member_data[1]);
+
+	// Construct jurisdictions html for use in page
+	$jurisdictions_html = bdh_mbc_jurisdiction_html($member_data);
 
 	$html_ret = <<<EOD
-					$debug_data
+					debug_data1: $debug_data1
+					<br>
+					debug_data2: $debug_data2
 					<div class="et_pb_column et_pb_column_4_4 et_pb_column_0  et_pb_css_mix_blend_mode_passthrough et-last-child">
 						<div class="et_pb_module et_pb_text et_pb_text_0  et_pb_text_align_left et_pb_bg_layout_light">
 							<div class="et_pb_text_inner">
