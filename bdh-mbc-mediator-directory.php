@@ -75,7 +75,6 @@ require plugin_dir_path(__FILE__) . 'includes/class-bdh-mbc-mediator-directory.p
  */
 function run_bdh_mbc_mediator_directory()
 {
-
 	$plugin = new BDH_MBC_Mediator_Directory();
 	$plugin->run();
 }
@@ -101,11 +100,9 @@ function wp_table_prefix()
 function get_active_mp_members()
 {
 	// Run SQL Query
-	global $wpdb;
 	$table_prefix = wp_table_prefix();
-	$query_str = "SELECT user_id, memberships FROM {$table_prefix}mepr_members WHERE active_txn_count > 0";
-	$query_prepared = $wpdb->prepare($query_str);
-	$query_data = $wpdb->get_results($query_prepared);
+
+	$query_data = run_sql_query("SELECT user_id, memberships FROM {$table_prefix}mepr_members WHERE active_txn_count > 0");
 
 	return $query_data;
 }
@@ -125,35 +122,63 @@ function mp_get_membership_table_data($ID_arr)
 	return $query_data;
 }
 
+function run_sql_query($query_str)
+{
+	$table_prefix = wp_table_prefix();
+
+	// echo "<br>";
+	// echo $query_str;
+
+	global $wpdb;
+
+	$query_prepared = $wpdb->prepare($query_str);
+	$query_data = $wpdb->get_results($query_prepared);
+
+	// echo prettyPrintPHPArr($query_data);
+
+	return $query_data;
+}
+
+// GLOBAL define row headings for DB query of {prefix}usermeta
+$meta_keys_select_arr = array(
+	"user_id",
+	"meta_key",
+	"meta_value"
+);
+
+// GLOBAL list fields wanted from {prefix}usermeta (called 'meta_key' in DB)
+$meta_filters_arr = array(
+	"first_name",
+	"last_name",
+	"description", // Not sure if using this
+	"mepr_regions_serviced", // wpmi_options.mepr_options contains properly capitalized region names
+	"mepr_phone",
+	"mepr_year_began_mediating",
+	"mepr_public_profile", // Short profile (listing)
+	"mepr_profile_picture", // URL to user profile photo
+	"mepr-address-city",
+	"mepr-address-country",
+	"mepr-address-postal-zip",
+	"mepr_detailed_profile" // Long profile
+);
+
 function mp_get_usermeta_table_data($user_id_list)
 {
+	// {prefix}usermeta table query
 	$table_prefix = wp_table_prefix();
 
 	$ID_arr_str = implode(", ", $user_id_list);
 
-	// List fields wanted from {prefix}usermeta (called 'meta_key' in DB)
-	$meta_filters_arr = array(
-		"first_name",
-		"last_name",
-		"description",
-		"mepr_regions_serviced", // wpmi_options.mepr_options contains properly capitalized region names
-	);
+	global $meta_filters_arr;
+
 	$meta_filters_w_prefix = array();
 	foreach ($meta_filters_arr as $val) {
 		$val2 =  '"' . $val . '"';
 		array_push($meta_filters_w_prefix, $val2);
 	}
 	$meta_filters_arr_str = implode(", ", $meta_filters_w_prefix);
-	// echo $meta_filters_arr_str;
 
-	$meta_keys_select_arr = array(
-		"user_id",
-		"meta_key",
-		"meta_value",
-		"mper_phone",
-		"mepr_year_began_mediating",
-
-	);
+	global $meta_keys_select_arr;
 
 	$table_select_fields_arr_w_prefix = array();
 	foreach ($meta_keys_select_arr as $val) {
@@ -162,19 +187,23 @@ function mp_get_usermeta_table_data($user_id_list)
 	}
 	$table_select_fields_str = implode(", ", $table_select_fields_arr_w_prefix);
 
-	// Set up SQL query
-	global $wpdb;
 
-	// {prefix}usermeta table query
-	$query_str = "SELECT $table_select_fields_str FROM `{$table_prefix}usermeta` WHERE `wpmi_usermeta`.`user_id` IN($ID_arr_str) and `wpmi_usermeta`.`meta_key` IN($meta_filters_arr_str)";
 
-	echo $query_str;
+	$usermeta_query_str = "SELECT $table_select_fields_str FROM `{$table_prefix}usermeta` WHERE `wpmi_usermeta`.`user_id` IN($ID_arr_str) and `wpmi_usermeta`.`meta_key` IN($meta_filters_arr_str)";
 
-	$query_prepared = $wpdb->prepare($query_str);
-	$query_data = $wpdb->get_results($query_prepared);
+	$usermeta_query_data = run_sql_query($usermeta_query_str);
 
-	return $query_data;
+	return $usermeta_query_data;
 }
+
+// GLOBAL list fields wanted from {prefix}users table
+$user_keys_arr = array(
+	"ID",
+	"user_nicename",
+	"user_email",
+	"display_name",
+	"user_url"
+);
 
 function mp_get_users_table_data($user_id_list)
 {
@@ -185,27 +214,13 @@ function mp_get_users_table_data($user_id_list)
 	// - url slug
 	// - options (fee waiver, willing to travel, fee reduction)
 	// - Tags
-	// - Long description
-	// - Short description
-	// - Photo URL
-
-	// Appears to work as a start
-	// SELECT wpmi_usermeta.user_id, wpmi_usermeta.meta_key, wpmi_usermeta.meta_value, wpmi_users.user_nicename, wpmi_users.user_email FROM wpmi_users INNER JOIN wpmi_usermeta ON wpmi_users.ID = wpmi_usermeta.user_id WHERE wpmi_users.ID IN(22); 
-
 
 	// Create array of IDs for queries
 	$ID_arr_str = implode(",", $user_id_list);
 
-	// List fields wanted from {prefix}users table
-	$user_keys_arr = array(
-		"user_nicename",
-		"user_email",
-		"display_name",
-		"user_url"
-	);
+	global $user_keys_arr;
 
 	// Add table names and prefixes to fields wanted, and add to array for SELECT in SQL query
-
 	$table_select_fields_arr_w_prefix = array();
 
 	foreach ($user_keys_arr as $val) {
@@ -215,90 +230,73 @@ function mp_get_users_table_data($user_id_list)
 
 	$table_select_fields_str = implode(", ", $table_select_fields_arr_w_prefix);
 
-	// Set up SQL query
-	global $wpdb;
-
-	// {prefix}usermeta table query
-	$query_str = "SELECT $table_select_fields_str FROM `{$table_prefix}users` WHERE `wpmi_users`.`ID` IN($ID_arr_str)";
-
-	$query_prepared = $wpdb->prepare($query_str);
-	$query_data = $wpdb->get_results($query_prepared);
-
-
-
+	$query_data = run_sql_query("SELECT $table_select_fields_str FROM `{$table_prefix}users` WHERE `wpmi_users`.`ID` IN($ID_arr_str)");
 
 	return $query_data;
 }
 
 function mp_memberships_and_user_ids()
 {
-
 	// Get list of active user ids and their associated (active) membership ids.
 	$users_arr = get_active_mp_members();
 
 	// Create list of (1) active user IDs, and (2) active membership ids, with duplicates.
 	$membership_id_list = array();
 	$user_id_list = array();
+	$user_memberships_list = array();
 	foreach ($users_arr as $user) {
-		$membership_id_list = array_merge($membership_id_list, explode(',', $user->memberships));
-		$user_id_list = array_merge($user_id_list, explode(',', $user->user_id));
+		$user_memberships = explode(',', $user->memberships);
+		$membership_id_list = array_merge($membership_id_list, $user_memberships);
+		$user_id = $user->user_id;
+		array_push($user_id_list, $user_id);
+		$user_memberships_list[$user_id] = $user_memberships;
 	}
 
 	// Remove duplicates, so $membership_id_list contains only unique values
 	$membership_id_list = array_unique($membership_id_list);
 	$user_id_list = array_unique($user_id_list);
 
-	// Convert the values in $membership_id_list to int
+	// Convert the values to int
 	$membership_id_list = array_map('intVal', $membership_id_list);
 	$user_id_list = array_map('intVal', $user_id_list);
 
-	// Get table data for active memberships
-	$membership_table_data = mp_get_membership_table_data($membership_id_list);
-	$users_table_data = mp_get_users_table_data($user_id_list);
-	$usermeta_table_data = mp_get_usermeta_table_data($user_id_list);
-
-	// Create membership data structure
-	$membership_structured_data = structure_membership_table_data($membership_table_data);
-
-	// Get table data for active members
-	// $member_table_data = get_member_table_data($users_arr);
-
-	return array($users_arr, $membership_table_data);
+	return array($user_id_list, $membership_id_list, $user_memberships_list);
 }
 
-
-
-function structure_membership_table_data($data)
+function get_structured_active_membership_data($active_membership_id_list)
 {
-	return false;
+	$active_membership_table_data = mp_get_membership_table_data($active_membership_id_list);
+
+	$structured_membership_table_data = array();
+	foreach ($active_membership_table_data as $membership) {
+		$id = $membership->ID;
+		$title = $membership->post_title;
+		$structured_membership_table_data[$id] = $title;
+	}
+
+	return $structured_membership_table_data;
 }
 
 // Generate HTML for jurisdictions checkboxes
-function bdh_mbc_jurisdiction_html($member_data)
+function bdh_mbc_jurisdiction_html($jurisdictions)
 {
 
-	// Initialize jurisdictions; get one user and collect jurisdictions
-
-
-
-
-	$jurisdictions = array('Alberni–Clayoquot', 'Bulkley–Nechako', 'Capital', 'Cariboo', 'Central Coast', 'Central Kootenay', 'Central Okanagan', 'Columbia-Shuswap', 'Comox Valley', 'Cowichan Valley', 'East Kootenay', 'Fraser Valley', 'Fraser–Fort George', 'Kitimat–Stikine', 'Kootenay Boundary', 'Metro Vancouver', 'Mount Waddington', 'Nanaimo', 'North Coast', 'North Okanagan', 'Northern Rockies', 'Okanagan–Similkameen', 'Peace River', 'qathet', 'Squamish–Lillooet', 'Stikine Region', 'Strathcona', 'Sunshine Coast', 'Thompson–Nicola');
-
 	// Just in case want to add others to end of array, will still be in alpha order
-	sort($jurisdictions);
+	ksort($jurisdictions);
 
 	// Determine number of jurisdictions
 	$jurisdictions_array_len = count($jurisdictions);
 
-	// Determine number of jurisdictions for first two columns (of 3 columns)
-	$jurisdictions_per_column = ceil($jurisdictions_array_len / 3);
+	// Determine number of jurisdictions for first two columns (of 4 columns)
+	$jurisdictions_per_column = floor($jurisdictions_array_len / 4);
 
 	// Initialize jurisdictions checkbox HTML (for use in $html_ret) with top part of $jurisdictions_html
 	$jurisdictions_html = <<<EOD
 							
 							<div class="et_pb_row et_pb_row_4 et_pb_equal_columns">
+								
 								<div class="et_pb_column et_pb_column_1_3 et_pb_css_mix_blend_mode_passthrough" style="margin:0px; padding: 0px;">
-									<div class="et_pb_module et_pb_text et_pb_text_7  et_pb_text_align_left et_pb_bg_layout_light">
+									<div class="et_pb_module et_pb_text et_pb_text_9  et_pb_text_align_left et_pb_bg_layout_light">
 										<div class="et_pb_text_inner">
 											<p>
 												
@@ -308,36 +306,41 @@ function bdh_mbc_jurisdiction_html($member_data)
 	$jurdctn_count = 0;
 
 	// Loop through jurisdictions, creating checkboxes for each
-	foreach ($jurisdictions as $jrsdctn) {
-
-		$jurisdictions_html .= "<input type='checkbox' id='strtolower($jrsdctn)' value='strtolower($jrsdctn)'>$jrsdctn</option>";
+	foreach ($jurisdictions as $jrsdctn_id => $jrsdctn_val) {
 
 		// If $jurisdictions_per_column is reached
 		if ($jurdctn_count == $jurisdictions_per_column) {
 
-			// Close current column and create new column
+			// Close current column
 			$jurisdictions_html .= <<<EOD
-													</p>
-												</div>
+												</p>
 											</div>
 										</div>
-										<div class="et_pb_column et_pb_column_1_3 et_pb_css_mix_blend_mode_passthrough et-last-child" style="margin:0px; padding: 0px;">
-											<div class="et_pb_module et_pb_text et_pb_text_9  et_pb_text_align_left et_pb_bg_layout_light">
-												<div class="et_pb_text_inner">
-													<p>
-										EOD;
+									</div>
+									EOD;
+
+			// Start new column
+			$jurisdictions_html .= <<<EOD
+									<div class="et_pb_column et_pb_column_1_3 et_pb_css_mix_blend_mode_passthrough et-last-child" style="margin:0px; padding: 0px;">
+										<div class="et_pb_module et_pb_text et_pb_text_9  et_pb_text_align_left et_pb_bg_layout_light">
+											<div class="et_pb_text_inner">
+												<p>
+									EOD;
 
 			// Reset counter to 0
 			$jurdctn_count = 0;
+
+			$jurisdictions_html .= "<input type='checkbox' id='{$jrsdctn_id}' value='{$jrsdctn_id}'>$jrsdctn_val</option><br>";
 		} else {
-			// Add a line break if another checkbox is to be added
-			$jurisdictions_html .= "<br>";
+
+			$jurisdictions_html .= "<input type='checkbox' id='{$jrsdctn_id}' value='{$jrsdctn_id}'>$jrsdctn_val</option><br>";
 		}
 
 		// Increment counter. Do this after the check, so that don't double-add column close.
 		$jurdctn_count++;
 	}
 
+	// Close column and row after foreach loop
 	$jurisdictions_html .= <<<EOD
 													</p>
 												</div>
@@ -350,20 +353,217 @@ function bdh_mbc_jurisdiction_html($member_data)
 	return $jurisdictions_html;
 }
 
-// Get structured data for mediator list
-function bdh_mbc_mediators_html($data = array())
-{
-	return bdh_mbc_mp_api_call();
-}
-
 function prettyPrintPHPArr($array)
 {
 	return '<pre>' . print_r($array, true) . '</pre>';
 }
 
-function create_user_data_arr()
+function get_structured_active_user_data($user_id_list, $user_memberships_arr)
 {
-	return mp_memberships_and_user_ids();
+	$user_table_data = mp_get_users_table_data($user_id_list);
+	$usermeta_table_data = mp_get_usermeta_table_data($user_id_list);
+
+	$structured_user_data = structure_user_query_data($user_table_data);
+	$structured_user_data = add_usermeta_query_data_to_structured_user_data($usermeta_table_data, $structured_user_data);
+
+	return $structured_user_data;
+}
+
+$tag_trigger_str = "Tag: ";
+$tag_trigger_end_idx = strlen($tag_trigger_str) - 1;
+function add_membership_ids_and_tags_to_structured_user_data($user_data, $user_memberships_arr, $active_membership_structured_data)
+{
+
+	global $tag_trigger_str;
+	global $tag_trigger_end_idx;
+
+	$tags_list = array();
+	$tags_dict = array();
+
+	// Determine memberships that are tags
+	foreach ($active_membership_structured_data as $membership_id => $membership_text) {
+		if (substr($membership_text, 0, 5) == "Tag: ") {
+			$text_arr = explode(" ", $membership_text);
+			$tag = $text_arr[1];
+			array_push($tags_list, $membership_id);
+			$tags_dict[$membership_id] = $tag;
+		}
+	}
+
+	// Search each user's member IDs, and add string of tags to each user record
+	foreach ($user_memberships_arr as $user_id => $membership_list) {
+
+		// $user_data[$user_id]["memberships_text_testing"] = array();
+		$user_data[$user_id]["tags"] = array();
+		foreach ($membership_list as $membership_id) {
+
+			// array_push($user_data[$user_id]["memberships_text_testing"], $active_membership_structured_data[$membership_id]);
+
+			if (in_array($membership_id, $tags_list)) {
+				array_push($user_data[$user_id]["tags"], $tags_dict[$membership_id]);
+			}
+		}
+	}
+
+	return array($user_data, $tags_dict);
+}
+
+function add_usermeta_query_data_to_structured_user_data($table_data, $user_data)
+{
+	global $meta_keys_select_arr;
+	global $meta_filters_arr;
+
+	foreach ($table_data as $entry) {
+		$entry_user_id = $entry->user_id;
+		$user_data[$entry_user_id][$entry->meta_key] = $entry->meta_value;
+	}
+
+	return $user_data;
+}
+
+function structure_user_query_data($table_data)
+{
+
+	global $user_keys_arr;
+
+	$user_data = array();
+	foreach ($table_data as $user) {
+		$id = $user->ID;
+
+		$temp_arr = array();
+
+		foreach ($user_keys_arr as $key) {
+			if (!($key == "ID")) {
+				$temp_arr[$key] = $user->$key;
+			}
+		}
+
+		$user_data[$id] = $temp_arr;
+	}
+
+	return $user_data;
+}
+
+function parse_regions_served($user_data)
+{
+	$list_of_regions = array();
+
+
+	foreach ($user_data as $user_k => $user_v) {
+		$user_region_data = unserialize($user_v['mepr_regions_serviced']);
+
+		$temp_region_list = array_keys($user_region_data);
+
+		$list_of_regions = array_merge($list_of_regions, $temp_region_list);
+
+		$user_data[$user_k]["regions_serviced_str"] = $temp_region_list;
+	}
+
+	$list_of_regions = array_unique($list_of_regions);
+
+	return array($user_data, $list_of_regions);
+}
+
+function create_structured_jurisdictions_array($regions_list)
+{
+	$structured_regions_list = array();
+
+	$table_prefix = wp_table_prefix();
+
+	$query_data = run_sql_query("SELECT `option_value` FROM `{$table_prefix}options` WHERE `option_name` = 'mepr_options'");
+
+	$query_data = $query_data[0]->option_value;
+
+	$query_data = unserialize($query_data)["custom_fields"];
+
+	foreach ($query_data as $field) {
+		if ($field["field_key"] == "mepr_regions_serviced") {
+			foreach ($field["options"] as $region_pair) {
+				$upper_case = $region_pair["option_name"];
+				$lower_case = $region_pair["option_value"];
+
+				$structured_regions_list[$lower_case] = $upper_case;
+			}
+		}
+	}
+
+	return $structured_regions_list;
+}
+
+function bdh_mbc_membership_filter_html($tags_dict)
+{
+	$ret_html = "";
+
+
+	foreach (array_values($tags_dict) as $tag) {
+		$tag_lower = strtolower($tag);
+
+		$ret_html .= "<input type='checkbox' id='$tag_lower' name='$tag_lower' value='$tag_lower'>$tag<br>";
+	}
+
+	return $ret_html;
+};
+
+function bdh_mbc_mediator_list_html($user_data)
+{
+
+	$ret_html = "";
+
+	shuffle($user_data);
+
+	foreach ($user_data as $user) {
+
+		if (isset($user["mepr_profile_picture"])) {
+			$photo_url = $user["mepr_profile_picture"];
+			$photo_url_2 = substr($photo_url, -4) . "-200x300" . ".jpg";
+		} else {
+			$photo_url = "";
+			$photo_url_2 = "";
+		}
+
+		$display_name = $user['display_name'];
+
+		if (isset($user['mepr_public_profile'])) {
+			$mepr_public_profile = $user['mepr_public_profile'];
+		} else {
+			$mepr_public_profile = "No profile found.";
+		}
+
+		$ret_html .= <<<EOD
+						<div class="et_pb_row et_pb_row_6 et_clickable">
+							<div class="et_pb_column et_pb_column_1_5 et_pb_column_11  et_pb_css_mix_blend_mode_passthrough">
+								<div class="et_pb_module et_pb_image et_pb_image_0 et_pb_image_sticky">
+									<span class="et_pb_image_wrap ">
+										<img src="$photo_url" alt="" title="portrait-12" srcset="$photo_url 400w, $photo_url_2 200w" sizes="(max-width: 400px) 100vw, 400px" class="wp-image-211240" width="400" height="600">
+									</span>
+								</div>
+							</div>
+							<div class="et_pb_column et_pb_column_3_5 et_pb_column_12  et_pb_css_mix_blend_mode_passthrough">
+										<div class="et_pb_module et_pb_text et_pb_text_11 et_clickable  et_pb_text_align_left et_pb_bg_layout_light">
+											<div class="et_pb_text_inner">
+												<p>
+													<strong>$display_name</strong>
+		EOD;
+
+		foreach ($user["tags"] as $tag) {
+			$ret_html .= <<<EOD
+							<span class="mbctag $tag">$tag</span>;
+						EOD;
+		}
+
+		$ret_html .= <<<EOD
+						</p>
+						<p>$mepr_public_profile</p>
+						</div>
+						</div>
+						</div>
+						<div class="et_pb_column et_pb_column_1_5 et_pb_column_13  et_pb_css_mix_blend_mode_passthrough et-last-child et_pb_column_empty">
+						</div>
+						</div>
+					EOD;
+	}
+
+	return $ret_html;
 }
 
 // Add Shortcode
@@ -373,19 +573,42 @@ function bdh_mbc_mediator_directory_shortcode_fn()
 	// Initialize scripts and css for the appropriate page
 	bdh_mbc_ready_scripts_styles();
 
-	// Generate an associative array, containing relevant user and member data
-	$member_data = create_user_data_arr();
+	[$active_users_list, $active_membership_id_list, $user_memberships_arr] = mp_memberships_and_user_ids();
 
-	$debug_data1 = prettyPrintPHPArr($member_data[0]);
-	$debug_data2 = prettyPrintPHPArr($member_data[1]);
+	$active_membership_structured_data = get_structured_active_membership_data($active_membership_id_list);
+
+	$user_structured_data = get_structured_active_user_data($active_users_list, $user_memberships_arr);
+
+	[$user_structured_data, $tags_dict] = add_membership_ids_and_tags_to_structured_user_data($user_structured_data, $user_memberships_arr, $active_membership_structured_data);
+
+	// echo prettyPrintPHPArr($tags_dict);
+
+	[$user_structured_data, $region_list] = parse_regions_served($user_structured_data);
+
+	$structured_jurisdictions_array = create_structured_jurisdictions_array($region_list);
 
 	// Construct jurisdictions html for use in page
-	$jurisdictions_html = bdh_mbc_jurisdiction_html($member_data);
+	$jurisdictions_html = bdh_mbc_jurisdiction_html($structured_jurisdictions_array);
+
+	// Construct HTML for tag / roster filter checkboxes
+	$membership_filter_html = bdh_mbc_membership_filter_html($tags_dict);
+
+	// Construct HTML for mediator list
+	$mediator_list_html = bdh_mbc_mediator_list_html($user_structured_data);
+
+	$debug_data1 = prettyPrintPHPArr($user_structured_data);
+	// $debug_data2 = prettyPrintPHPArr($structured_jurisdictions_array);
+	// $debug_data1 = "";
+	// $debug_data2 = "";
+	// $debug_data3 = "";
+
+	// debug_data1: $debug_data1
+	// <br>
+	// debug_data2: $debug_data2
+	// <br>
+	// debug_data3: $debug_data3
 
 	$html_ret = <<<EOD
-					debug_data1: $debug_data1
-					<br>
-					debug_data2: $debug_data2
 					<div class="et_pb_column et_pb_column_4_4 et_pb_column_0  et_pb_css_mix_blend_mode_passthrough et-last-child">
 						<div class="et_pb_module et_pb_text et_pb_text_0  et_pb_text_align_left et_pb_bg_layout_light">
 							<div class="et_pb_text_inner">
@@ -398,9 +621,7 @@ function bdh_mbc_mediator_directory_shortcode_fn()
 								<div class="et_pb_module et_pb_text et_pb_text_1  et_pb_text_align_left et_pb_bg_layout_light">
 									<div class="et_pb_text_inner"><h5>Roster membership</h5>
 										<p>
-											<input type="checkbox" id="familyMediator" name="familyMediator" value="familyMediator">Family Mediator<br>
-											<input type="checkbox" id="civilMediator" name="civilMediator" value="civilMediator">Civil Mediator<br>
-											<input type="checkbox" id="elderMediator" name="elderMediator" value="elderMediator">Elder Mediator<br><input type="checkbox" id="excludeAssociate" name="excludeAssociate" value="exclude Associate">Exclude associate mediators
+											$membership_filter_html
 										</p>
 									</div>
 								</div>
@@ -434,14 +655,14 @@ function bdh_mbc_mediator_directory_shortcode_fn()
 							<div class="et_pb_column et_pb_column_1_3 et_pb_column_4  et_pb_css_mix_blend_mode_passthrough">
 								<div class="et_pb_module et_pb_text et_pb_text_4  et_pb_text_align_left et_pb_bg_layout_light">
 									<div class="et_pb_text_inner">
-										<p>Professional background checkboxes/dropdown (criteria TBD)</p>
+										<p>Placeholder</p>
 									</div>
 								</div>
 							</div>
 							<div class="et_pb_column et_pb_column_1_3 et_pb_column_5  et_pb_css_mix_blend_mode_passthrough et-last-child">
 								<div class="et_pb_module et_pb_text et_pb_text_5  et_pb_text_align_left et_pb_bg_layout_light">
 									<div class="et_pb_text_inner">
-										<p>“tags” criteria TBD (eg. online mediator)</p>
+										<p>Placeholder</p>
 									</div>
 								</div>
 							</div>
@@ -467,28 +688,7 @@ function bdh_mbc_mediator_directory_shortcode_fn()
 									</div>
 								</div>
 							</div>
-							<div class="et_pb_row et_pb_row_6 et_clickable">
-								<div class="et_pb_column et_pb_column_1_5 et_pb_column_11  et_pb_css_mix_blend_mode_passthrough">
-									<div class="et_pb_module et_pb_image et_pb_image_0 et_pb_image_sticky">
-										<span class="et_pb_image_wrap ">
-											<img src="http://mbcsandbox.com/wp-content/uploads/2022/07/portrait-12.jpg" alt="" title="portrait-12" srcset="https://mbcsandbox.com/wp-content/uploads/2022/07/portrait-12.jpg 400w, https://mbcsandbox.com/wp-content/uploads/2022/07/portrait-12-200x300.jpg 200w" sizes="(max-width: 400px) 100vw, 400px" class="wp-image-211240" width="400" height="600">
-										</span>
-									</div>
-								</div>
-								<div class="et_pb_column et_pb_column_3_5 et_pb_column_12  et_pb_css_mix_blend_mode_passthrough">
-									<div class="et_pb_module et_pb_text et_pb_text_11 et_clickable  et_pb_text_align_left et_pb_bg_layout_light">
-										<div class="et_pb_text_inner">
-											<p>
-												<strong>Mediator Name</strong>
-												<span class="mbctag mbctag1"></span><span class="mbctag mbctag3"></span>
-											</p>
-											<p>Mediator intro blurb.</p>
-										</div>
-									</div>
-								</div>
-								<div class="et_pb_column et_pb_column_1_5 et_pb_column_13  et_pb_css_mix_blend_mode_passthrough et-last-child et_pb_column_empty">
-								</div>
-							</div>
+							$mediator_list_html
 						</div>
 					</div>
 EOD;
